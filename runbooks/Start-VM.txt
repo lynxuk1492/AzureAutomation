@@ -1,0 +1,21 @@
+Param (
+		[string]$VMServiceName
+	  )
+		
+$Cred = Get-AutomationPSCredential -Name ''
+$Null = Add-AzureAccount -Credential $Cred -ErrorAction Stop
+
+$SubID = Get-AutomationVariable -Name 'SubscriptionId'
+$Null = Set-AzureSubscription -SubscriptionId $SubID
+
+$VMList = Get-azureVM |Where-Object {$_.ServiceName -Like "$VMServiceName*"}
+
+ForEach ($VM in $VMList)
+{
+    If ($VM.Name -eq "DC") {Start-AzureVM -Name $VM.Name -ServiceName $VM.ServiceName}
+}
+
+ForEach ($VM in $VMList)
+{
+    If ($VM.Name -ne "DC") {Start-AzureVM -Name $VM.Name -ServiceName $VM.ServiceName}
+}
