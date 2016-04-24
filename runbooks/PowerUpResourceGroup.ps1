@@ -33,7 +33,7 @@ workflow PowerUpResourceGroup
     $ResList = Find-AzureRmResource -TagName Early -TagValue True 
     
     "Loop thru each vm"
-    ForEach ($Res in $ResList)
+    ForEach –parallel ($Res in $ResList)
     {
         If ($Res.ResourceGroupName -eq $ResourceGroupName -and $Res.ResourceType -eq "Microsoft.Compute/virtualMachines")
         {
@@ -49,7 +49,7 @@ workflow PowerUpResourceGroup
     $ResList = Find-AzureRmResource  -ResourceType "Microsoft.Compute/virtualMachines" -ResourceGroupNameContains $ResourceGroupName
     
     "Loop thru each vm"
-    ForEach ($Res in $ResList)
+    ForEach –parallel ($Res in $ResList)
     {
         $VMStatus = (Get-AzureRMVM -ResourceGroupName $ResourceGroupName -Name $Res.Name -Status).Statuses.Code |where {$_.SubString(0,10) -eq 'PowerState'}
         If ($VMStatus -ne 'PowerState/running')
