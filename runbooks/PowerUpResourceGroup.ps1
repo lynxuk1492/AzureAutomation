@@ -4,7 +4,7 @@ workflow PowerUpResourceGroup
 	   [parameter(Mandatory=$true)]		
        [string]$ResourceGroupName 
      ) 
-	
+
 	$connectionName = "AzureRunAsConnection"
 	try
 	{
@@ -29,23 +29,34 @@ workflow PowerUpResourceGroup
 	    }
 	}
 	
-	"Get all the VM in the Resource Gtoup"
-	$ResourceGroupName
-	$VMs = Find-AzureRmResource -ResourceGroupNameContains $ResourceGroupName -ResourceType "Microsoft.Compute/virtualMachines"
-	
-	"Loop thru each vm"
-	$ErrorActionPreference = 'SilentlyContinue'	
-	ForEach ($VM in $VMs)
-	{
-		"Test Each VM ($vm.name)"
-		If ($vm.tags.Count -ne 0)
-		{	
-			If ($VM.Tags.ContainsValue("Early") -eq "True")
-			{
-				"Finding Early Start VMs"
-				$vm.name
-				Start-azurermvm -ResourceGroupName $ResourceGroupName -Name $vm.name
-			}
-		}
-	}	
+    "Get all the VM in Resource Group $ResourceGroupName"
+    $ResList = Find-AzureRmResource -TagName Early -TagValue True 
+    
+    "Loop thru each vm"
+    ForEach ($Res in $ResList)
+    {
+        If ($Res.ResourceGroupName -eq $ResourceGroupName -and $Res.ResourceType -eq "Microsoft.Compute/virtualMachines")
+        {
+            $VMStatus = (Get-AzureRMVM -ResourceGroupName $ResourceGroupName -Name $Res.Name -Status).Statuses.Code |where {$_.SubString(0,10) -eq 'PowerState'}
+            If ($VMStatus -ne 'PowerState/running')
+            {
+                "Powering up (early) $($Res.Name)"
+                Start-AzureRmVM -ResourceGroupName $ResourceGroupName -Name $Res.Name
+            }
+        }
+    }
+
+    $ResList = Find-AzureRmResource  -ResourceType "Microsoft.Compute/virtualMachines" -ResourceGroupNameContains $ResourceGroupName
+    
+    "Loop thru each vm"
+    ForEach ($Res in $ResList)
+    {
+        $VMStatus = (Get-AzureRMVM -ResourceGroupName $ResourceGroupName -Name $Res.Name -Status).Statuses.Code |where {$_.SubString(0,10) -eq 'PowerState'}
+        If ($VMStatus -ne 'PowerState/running')
+            {
+                "Powering up $($Res.Name)"
+                Start-AzureRmVM -ResourceGroupName $ResourceGroupName -Name $Res.Name
+            }
+    }
+
 }
